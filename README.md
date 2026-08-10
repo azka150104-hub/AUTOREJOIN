@@ -1,0 +1,2 @@
+# AUTOREJOIN
+testing
