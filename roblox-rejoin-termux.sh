@@ -135,6 +135,107 @@ open_game() {
   printf "${GREEN}  Mencoba masuk langsung ke game Roblox...${RESET}\n"
 }
 
+// ==UserScript==
+// @name         PlatoBoost
+// @namespace    https://platorelay.com
+// @version      1.0.7
+// @description  Automated key bypass for PlatoBoost
+// @author       PlatoBoost
+// @match        https://platorelay.com/*
+// @match        https://auth.platorelay.com/*
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_xmlhttpRequest
+// @grant        GM.getValue
+// @grant        GM.setValue
+// @grant        GM.xmlHttpRequest
+// @inject-into  content
+// @run-at       document-idle
+// ==/UserScript==
+
+// GM shim for Tampermonkey, Violentmonkey, and Safari Userscripts
+(function() {
+
+  var hasDot  = typeof GM  !== "undefined" && typeof GM.getValue  === "function";
+  var hasUnd  = typeof GM_getValue === "function" && !hasDot;
+  var hasXhrDot = hasDot && typeof GM.xmlHttpRequest === "function";
+  var hasXhrUnd = typeof GM_xmlhttpRequest === "function";
+
+  // pref cache
+  var __pb_store = {};
+
+  if (!hasUnd) {
+    window.GM_getValue = function(key, def) {
+      return (key in __pb_store) ? __pb_store[key] : (def !== undefined ? def : undefined);
+    };
+  } else {
+
+    var _orig_get = GM_getValue;
+    window.GM_getValue = function(key, def) { return (key in __pb_store) ? __pb_store[key] : def; };
+  }
+
+  if (!hasUnd) {
+    window.GM_setValue = function(key, val) {
+      __pb_store[key] = val;
+      try {
+        if (hasDot)  { GM.setValue(key, val); }
+        else         { localStorage.setItem("__pbgm_" + key, val); }
+      } catch(e) {}
+    };
+  } else {
+    window.GM_setValue = function(key, val) {
+      __pb_store[key] = val;
+      try { GM_setValue(key, val); } catch(e) {}
+    };
+  }
+
+  if (!hasXhrUnd && hasXhrDot) {
+    window.GM_xmlhttpRequest = function(opts) { return GM.xmlHttpRequest(opts); };
+  } else if (!hasXhrUnd && !hasXhrDot) {
+    // plain XHR fallback, no CORS bypass
+    window.GM_xmlhttpRequest = function(opts) {
+      var xhr = new XMLHttpRequest();
+      xhr.open(opts.method || "GET", opts.url);
+      if (opts.headers) { Object.keys(opts.headers).forEach(function(h) { try { xhr.setRequestHeader(h, opts.headers[h]); } catch(e) {} }); }
+      if (opts.responseType) xhr.responseType = opts.responseType;
+      xhr.onload    = function() { if (opts.onload)    opts.onload(xhr); };
+      xhr.onerror   = function() { if (opts.onerror)   opts.onerror(xhr); };
+      xhr.ontimeout = function() { if (opts.ontimeout) opts.ontimeout(xhr); };
+      xhr.send(opts.data || null);
+    };
+  }
+
+  // load all prefs, async on Safari
+  var PREF_KEYS = [
+    "__pb_provider", "__pb_trw_key", "__pb_bt_key", "__pb_bv_key",
+    "__pb_auto_captcha", "__pb_fast_tokens", "__pb_theme", "__pb_setup_done"
+  ];
+  var PREF_DEFAULTS = {
+    "__pb_provider": "trw", "__pb_trw_key": "", "__pb_bt_key": "", "__pb_bv_key": "",
+    "__pb_auto_captcha": "1", "__pb_fast_tokens": "1", "__pb_theme": "dark", "__pb_setup_done": ""
+  };
+
+  window.__pbInitPrefs = function() {
+    if (hasDot) {
+      // Safari
+      return Promise.all(PREF_KEYS.map(function(k) {
+        return GM.getValue(k, PREF_DEFAULTS[k]).then(function(v) {
+          __pb_store[k] = (v === undefined || v === null) ? PREF_DEFAULTS[k] : v;
+        }).catch(function() { __pb_store[k] = PREF_DEFAULTS[k]; });
+      }));
+    } else if (hasUnd) {
+      // Tampermonkey / Violentmonkey
+      PREF_KEYS.forEach(function(k) {
+        var v; try { v = _orig_get(k, PREF_DEFAULTS[k]); } catch(e) { v = PREF_DEFAULTS[k]; }
+        __pb_store[k] = (v === undefined || v === null) ? PREF_DEFAULTS[k] : v;
+      });
+      return Promise.resolve();
+    } else {
+      // localStorage fallback
+      PREF_KEYS.forEach(function(k) {
+        try { var v = localStorage.getItem("__pbgm_" + k); __pb_store[k] = v === null ? PREF_DEFAULTS[k] : v; }
+        catch(e) { __pb_store[k] = PREF_DEFAULTS[k]; }... (36 KB left)
+        
 open_browser_join() {
   local game_url
   is_configured || return
